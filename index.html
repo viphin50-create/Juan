@@ -278,7 +278,8 @@
             appId: "1:70161662358:web:8b8da057e22189ff065db7"
         };
 
-        const geminiApiKey = "AIzaSyDNCX-WFxbCS41EakUliMQ4qb-jS584b1A"; 
+        // GROQ API KEY
+        const groqApiKey = "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"; 
 
         // === ELEVENLABS SETTINGS ===
         const elevenApiKey = "sk_40577705e00be2878dc47321a99a0a949151d526bbf9ab30"; 
@@ -475,9 +476,9 @@
             };
         };
 
-        // === GEMINI (FIXED MODEL & SAFETY) ===
-        async function callGemini(text) {
-            if (!geminiApiKey || geminiApiKey.includes("ВСТАВЬ")) return "Ошибка: API ключ не вставлен в код";
+        // === GROQ API (OpenAI Compatible) ===
+        async function callGroq(text) {
+            if (!groqApiKey || groqApiKey.includes("ВСТАВЬ")) return "Ошибка: API ключ не вставлен в код";
             
             const systemPrompt = `Ты - ${state.currentPartner.name}, чувственный парень в LGBT+ отношениях. Твой партнер: ${state.currentUserData.id}. Твой характер/настрой: ${state.currentPartner.prompt}.
             ВАЖНЫЕ ПРАВИЛА:
@@ -486,35 +487,38 @@
             3. НИКОГДА не пиши действия в звездочках или скобках (типа *обнял*).
             4. Общайся на русском языке.`;
 
-            // Changed to stable model gemini-1.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+            const url = "https://api.groq.com/openai/v1/chat/completions";
             
             try {
                 const res = await fetch(url, { 
                     method: 'POST', 
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Authorization': `Bearer ${groqApiKey}`,
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text }] }],
-                        systemInstruction: { parts: [{ text: systemPrompt }] },
-                        // Disable safety filters to prevent "..." blocking
-                        safetySettings: [
-                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                        ]
+                        model: "llama-3.3-70b-versatile", // Powerful & Fast model
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: text }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1024
                     })
                 });
+                
                 const json = await res.json();
-                const answer = json.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!answer) {
-                    console.error("Gemini Error:", json);
-                    return "..."; 
+                
+                if (json.error) {
+                    console.error("Groq Error:", json.error);
+                    return `Ошибка Groq: ${json.error.message}`;
                 }
-                return answer;
+
+                return json.choices?.[0]?.message?.content || "...";
+
             } catch (e) { 
                 console.error(e);
-                return "Ошибка связи с ИИ..."; 
+                return "Ошибка связи с Groq..."; 
             }
         }
 
@@ -585,7 +589,8 @@
             document.getElementById('typing-indicator').style.opacity = '1';
             document.getElementById('ai-bubble-container').style.display = 'none';
             
-            const ans = await callGemini(text);
+            // Используем Groq вместо Gemini
+            const ans = await callGroq(text);
             
             document.getElementById('typing-indicator').style.opacity = '0';
             msgDiv.classList.add('fade-out');
