@@ -98,7 +98,25 @@
         .chat-stage::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: linear-gradient(to top, var(--deep-indigo) 10%, transparent 100%); z-index: 2; }
 
         .ai-bubble-container { z-index: 10; width: 85%; margin-bottom: 110px; transform-origin: bottom center; display: none; }
-        .ai-bubble { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #fff; padding: 12px 18px; border-radius: 20px; font-size: 14px; line-height: 1.5; position: relative; border: 1px solid rgba(255,255,255,0.1); text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        .ai-bubble { 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            color: #fff; 
+            padding: 15px 20px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            line-height: 1.5; 
+            position: relative; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            text-align: center; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-height: 55vh; 
+            overflow-y: auto; 
+            word-wrap: break-word;
+            overflow-x: hidden;
+        }
 
         .user-temp-msg { position: absolute; bottom: 100px; z-index: 15; background: var(--accent-cyan); color: #010a16; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 5px 15px rgba(0, 242, 255, 0.3); transition: 0.6s ease; }
         .fade-out { opacity: 0; transform: translateY(-20px); }
@@ -109,9 +127,24 @@
         .send-btn { width: 40px; height: 40px; background: var(--accent-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #010a16; cursor: pointer; border: none; font-size: 20px; }
         #typing-indicator { position: absolute; top: -20px; width: 100%; text-align: center; font-size: 10px; color: var(--accent-cyan); letter-spacing: 2px; opacity: 0; transition: 0.3s; }
         .header-chat { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 30; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(1, 10, 22, 0.9); }
+
+        /* Error Banner */
+        #error-banner {
+            position: fixed; top: 0; left: 0; width: 100%;
+            background: rgba(255, 0, 80, 0.9); color: white;
+            padding: 20px; z-index: 3000; text-align: center;
+            display: none; font-size: 14px;
+        }
     </style>
 </head>
 <body>
+
+    <div id="error-banner">
+        <strong>Ошибка доступа к базе!</strong><br>
+        Зайди в Firebase Console -> Firestore -> Rules<br>
+        И разреши доступ (publish rules).<br>
+        <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; padding:5px 10px; background:white; color:black; border:none; border-radius:5px;">Закрыть</button>
+    </div>
 
     <div id="screen-intro">
         <video class="intro-video" id="main-intro-video" autoplay loop muted playsinline>
@@ -164,7 +197,6 @@
                 <div id="hero-create-ui" class="create-container">
                     <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Новое сознание</div>
                     <input type="text" id="new-p-name" placeholder="Имя">
-                    <input type="text" id="new-p-img" placeholder="URL изображения">
                     <textarea id="new-p-prompt" placeholder="Настрой/Характер..." style="height: 80px;"></textarea>
                     <button class="minimal-btn" onclick="handleCreatePartner()">Призвать</button>
                     <span class="form-toggle-link" onclick="toggleForm('hero-main-ui', 'hero-create-ui')">Назад</span>
@@ -184,7 +216,7 @@
                     <img id="partner-model-img" class="model-img" src="">
                 </div>
                 <div id="ai-bubble-container" class="ai-bubble-container">
-                    <div id="ai-text" class="ai-bubble">Я слушаю...</div>
+                    <div id="ai-text" class="ai-bubble">Я слушаю... 🌊</div>
                 </div>
                 <div id="user-temp-container"></div>
             </div>
@@ -206,7 +238,7 @@
         import { getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
-        //  НАСТРОЙКИ (ЗАПОЛНЕНО)
+        //  ТВОИ КЛЮЧИ
         // ==========================================
         
         const manualConfig = {
@@ -222,13 +254,13 @@
 
         // ==========================================
         
-        let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : manualConfig;
+        // Используем твой manualConfig принудительно, если он есть
+        let firebaseConfig = manualConfig;
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Используем projectId из конфига для пути к данным
         const appId = firebaseConfig.projectId;
 
         let state = { user: null, currentUserData: null, currentPartner: null, partners: [], users: [] };
@@ -261,11 +293,21 @@
             onSnapshot(usersRef, (snap) => {
                 state.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 updateLists();
+            }, (error) => {
+                console.error("Users error:", error);
+                if(error.code === 'permission-denied') {
+                    document.getElementById('error-banner').style.display = 'block';
+                }
             });
 
             onSnapshot(partnersRef, (snap) => {
                 state.partners = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 updateLists();
+            }, (error) => {
+                console.error("Partners error:", error);
+                if(error.code === 'permission-denied') {
+                    document.getElementById('error-banner').style.display = 'block';
+                }
             });
         }
 
@@ -306,7 +348,8 @@
         window.handleCreatePartner = async () => {
             if (!state.user) return;
             const name = document.getElementById('new-p-name').value.trim();
-            const img = document.getElementById('new-p-img').value.trim();
+            // Default image
+            const img = 'https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png';
             const prompt = document.getElementById('new-p-prompt').value.trim();
             if (!name) return alert('Имя обязательно');
             try {
@@ -329,16 +372,30 @@
             const pId = document.getElementById('partner-select').value;
             state.currentPartner = state.partners.find(p => p.id === pId);
             if (!state.currentPartner) return;
+
             document.getElementById('partner-name-display').innerText = state.currentPartner.name;
             document.getElementById('partner-model-img').src = state.currentPartner.img || 'https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png';
+            
+            // === RESET CHAT STATE ===
+            document.getElementById('ai-text').innerText = "Я слушаю... 🌊";
+            document.getElementById('ai-bubble-container').style.display = 'block';
+            document.getElementById('user-temp-container').innerHTML = '';
+            document.getElementById('chat-input').value = '';
+            
             showScreen('screen-chat');
         };
 
         // GEMINI
         async function callGemini(text) {
-            if (!geminiApiKey || geminiApiKey.includes("ВСТАВЬ")) return "Ошибка: API ключ не вставлен в код (строка 276)";
+            if (!geminiApiKey || geminiApiKey.includes("ВСТАВЬ")) return "Ошибка: API ключ не вставлен в код";
             
-            const systemPrompt = `Ты - ${state.currentPartner.name}, чувственный парень, LGBT+ контекст. Партнер: ${state.currentUserData.id}. Настрой: ${state.currentPartner.prompt}. Не пиши действия в звездочках.`;
+            const systemPrompt = `Ты - ${state.currentPartner.name}, чувственный парень в LGBT+ отношениях. Твой партнер: ${state.currentUserData.id}. Твой характер/настрой: ${state.currentPartner.prompt}.
+            ВАЖНЫЕ ПРАВИЛА:
+            1. Ответы краткие, живые и эмоциональные.
+            2. ОБЯЗАТЕЛЬНО используй эмодзи в каждом сообщении (🔥, 😏, 🌊, ❤️ и т.д.).
+            3. НИКОГДА не пиши действия в звездочках или скобках (типа *обнял*).
+            4. Общайся на русском языке.`;
+
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
             
             try {
