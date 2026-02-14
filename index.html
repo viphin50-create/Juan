@@ -43,15 +43,21 @@
             100% { background-position: 50% 0%; }
         }
 
+        /* --- ЭКРАН ПЕРЕХОДА (Скрыт по умолчанию) --- */
         #screen-intro {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 2000; background: var(--deep-indigo);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            display: none; /* Скрыто изначально */
+            flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0;
             transition: opacity 0.8s ease;
         }
 
-        .intro-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.4); }
-        .intro-btn-wrapper { position: absolute; bottom: 15%; z-index: 2001; }
+        .intro-video { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            object-fit: cover; 
+            filter: brightness(0.6); 
+        }
 
         .container {
             width: 100%; max-width: 500px; height: 100dvh;
@@ -66,13 +72,29 @@
 
         .flow-content { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; gap: 20px; text-align: center; }
 
+        /* --- СТИЛИ АВАТАРА --- */
         .avatar-main {
-            width: 120px; height: 120px; border-radius: 50%; padding: 2px;
+            width: 120px; 
+            height: 120px; 
+            border-radius: 50%; 
+            padding: 3px; 
             background: linear-gradient(135deg, var(--accent-cyan), transparent);
             box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
-            overflow: hidden; margin-bottom: 10px;
+            margin-bottom: 10px;
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1; 
         }
-        .avatar-main img { width: 100%; height: 100%; object-fit: cover; }
+
+        .avatar-main img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            border-radius: 50%; 
+            display: block;
+        }
+        /* --------------------------- */
 
         input, select, textarea {
             width: 100%; background: var(--input-bg); border: 1px solid rgba(255,255,255,0.2);
@@ -146,13 +168,11 @@
         <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; padding:5px 10px; background:white; color:black; border:none; border-radius:5px;">Закрыть</button>
     </div>
 
+    <!-- ЭКРАН ПЕРЕХОДА (Скрыт, появляется при коннекте) -->
     <div id="screen-intro">
-        <video class="intro-video" id="main-intro-video" autoplay loop muted playsinline>
-            <source src="https://image2url.com/r2/default/videos/1770938085939-0f030fec-f973-4b6b-892b-f63f6330c702.mp4" type="video/mp4">
+        <video class="intro-video" id="main-intro-video" playsinline>
+            <source src="https://image2url.com/r2/default/videos/1771105346041-b5551378-9d6e-4b75-89b8-727d83f6f4cb.mp4" type="video/mp4">
         </video>
-        <div class="intro-btn-wrapper">
-            <button class="minimal-btn" onclick="exitIntro()">В поток</button>
-        </div>
     </div>
 
     <div class="ocean-bg"></div>
@@ -238,7 +258,7 @@
         import { getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
-        //  ТВОИ КЛЮЧИ
+        //  ТВОИ КЛЮЧИ (НЕ УДАЛЯЙ)
         // ==========================================
         
         const manualConfig = {
@@ -254,7 +274,6 @@
 
         // ==========================================
         
-        // Используем твой manualConfig принудительно, если он есть
         let firebaseConfig = manualConfig;
 
         const app = initializeApp(firebaseConfig);
@@ -319,11 +338,6 @@
             if (pSelect) pSelect.innerHTML = state.partners.map(p => `<option value="${p.id}">${p.name.toUpperCase()}</option>`).join('') || '<option value="">НЕТ СОЗНАНИЙ</option>';
         }
 
-        window.exitIntro = () => {
-            document.getElementById('screen-intro').style.opacity = "0";
-            setTimeout(() => document.getElementById('screen-intro').style.display = "none", 800);
-        };
-
         window.toggleForm = (showId, hideId) => {
             document.getElementById(showId).style.display = 'flex';
             document.getElementById(hideId).style.display = 'none';
@@ -373,16 +387,40 @@
             state.currentPartner = state.partners.find(p => p.id === pId);
             if (!state.currentPartner) return;
 
-            document.getElementById('partner-name-display').innerText = state.currentPartner.name;
-            document.getElementById('partner-model-img').src = state.currentPartner.img || 'https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png';
-            
-            // === RESET CHAT STATE ===
-            document.getElementById('ai-text').innerText = "Я слушаю... 🌊";
-            document.getElementById('ai-bubble-container').style.display = 'block';
-            document.getElementById('user-temp-container').innerHTML = '';
-            document.getElementById('chat-input').value = '';
-            
-            showScreen('screen-chat');
+            // === 1. ЗАПУСКАЕМ "РИТУАЛ" (ВИДЕО ПЕРЕХОД) ===
+            const introScreen = document.getElementById('screen-intro');
+            const video = document.getElementById('main-intro-video');
+
+            // Показываем оверлей
+            introScreen.style.display = 'flex';
+            // Небольшая задержка для плавного появления (transition)
+            setTimeout(() => { introScreen.style.opacity = '1'; }, 10);
+
+            // Настраиваем видео
+            video.currentTime = 0;
+            video.muted = false; // ЗВУК ВКЛ
+            video.play();
+
+            // Когда видео кончится -> переход в чат
+            video.onended = () => {
+                // Плавное исчезновение
+                introScreen.style.opacity = '0';
+                setTimeout(() => {
+                    introScreen.style.display = 'none';
+                    
+                    // === 2. НАСТРАИВАЕМ ЧАТ (УЖЕ ПОСЛЕ ВИДЕО) ===
+                    document.getElementById('partner-name-display').innerText = state.currentPartner.name;
+                    document.getElementById('partner-model-img').src = state.currentPartner.img || 'https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png';
+                    
+                    // Reset Chat UI
+                    document.getElementById('ai-text').innerText = "Я слушаю... 🌊";
+                    document.getElementById('ai-bubble-container').style.display = 'block';
+                    document.getElementById('user-temp-container').innerHTML = '';
+                    document.getElementById('chat-input').value = '';
+                    
+                    showScreen('screen-chat');
+                }, 800);
+            };
         };
 
         // GEMINI
