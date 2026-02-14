@@ -43,11 +43,11 @@
             100% { background-position: 50% 0%; }
         }
 
-        /* --- ЭКРАН ПЕРЕХОДА (Скрыт по умолчанию) --- */
+        /* --- ЭКРАН ПЕРЕХОДА --- */
         #screen-intro {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 2000; background: var(--deep-indigo);
-            display: none; /* Скрыто изначально */
+            display: none;
             flex-direction: column; align-items: center; justify-content: center;
             opacity: 0;
             transition: opacity 0.8s ease;
@@ -94,7 +94,6 @@
             border-radius: 50%; 
             display: block;
         }
-        /* --------------------------- */
 
         input, select, textarea {
             width: 100%; background: var(--input-bg); border: 1px solid rgba(255,255,255,0.2);
@@ -174,7 +173,7 @@
         <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; padding:5px 10px; background:white; color:black; border:none; border-radius:5px;">Закрыть</button>
     </div>
 
-    <!-- ЭКРАН ПЕРЕХОДА (Скрыт, появляется при коннекте) -->
+    <!-- ЭКРАН ПЕРЕХОДА -->
     <div id="screen-intro">
         <video class="intro-video" id="main-intro-video" playsinline>
             <source src="https://image2url.com/r2/default/videos/1771105346041-b5551378-9d6e-4b75-89b8-727d83f6f4cb.mp4" type="video/mp4">
@@ -203,7 +202,7 @@
                     <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Новый сигнал</div>
                     <input type="text" id="new-user-id" placeholder="Имя">
                     <input type="password" id="new-user-pass" placeholder="Пароль">
-                    <button class="minimal-btn" onclick="handleCreateUser()">Создать</button>
+                    <button class="minimal-btn" id="create-btn" onclick="handleCreateUser()">Создать</button>
                     <span class="form-toggle-link" onclick="toggleForm('auth-main-ui', 'auth-create-ui')">Назад</span>
                 </div>
             </div>
@@ -224,7 +223,7 @@
                     <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Новое сознание</div>
                     <input type="text" id="new-p-name" placeholder="Имя">
                     <textarea id="new-p-prompt" placeholder="Настрой/Характер..." style="height: 80px;"></textarea>
-                    <button class="minimal-btn" onclick="handleCreatePartner()">Призвать</button>
+                    <button class="minimal-btn" id="create-p-btn" onclick="handleCreatePartner()">Призвать</button>
                     <span class="form-toggle-link" onclick="toggleForm('hero-main-ui', 'hero-create-ui')">Назад</span>
                 </div>
             </div>
@@ -235,7 +234,6 @@
             <div class="header-chat">
                 <div style="font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;" id="partner-name-display">JUAN</div>
                 <div style="display: flex; align-items: center;">
-                    <!-- Кнопка звука -->
                     <span id="sound-toggle" class="mute-toggle" onclick="toggleSound()">🔊</span>
                     <div onclick="showScreen('screen-hero')" style="font-size: 10px; opacity: 0.6; cursor: pointer; letter-spacing: 1px;">НАЗАД</div>
                 </div>
@@ -268,7 +266,7 @@
         import { getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
-        //  ТВОИ КЛЮЧИ (НЕ УДАЛЯЙ)
+        //  ТВОИ КЛЮЧИ
         // ==========================================
         
         const manualConfig = {
@@ -282,10 +280,10 @@
 
         const geminiApiKey = "AIzaSyDNCX-WFxbCS41EakUliMQ4qb-jS584b1A"; 
 
-        // === ELEVENLABS SETTINGS (ВСТАВЛЕНЫ) ===
+        // === ELEVENLABS SETTINGS ===
         const elevenApiKey = "sk_40577705e00be2878dc47321a99a0a949151d526bbf9ab30"; 
         const voiceId = "6A9D8WSMm4rFsg2DWFeE"; 
-        // =========================================
+        // ===========================
         
         let firebaseConfig = manualConfig;
 
@@ -296,10 +294,8 @@
         const appId = firebaseConfig.projectId;
 
         let state = { user: null, currentUserData: null, currentPartner: null, partners: [], users: [] };
-        
         let isSoundOn = true;
 
-        // AUTH INIT
         const init = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -342,8 +338,8 @@
         function updateLists() {
             const uSelect = document.getElementById('user-select');
             const pSelect = document.getElementById('partner-select');
-            if (uSelect) uSelect.innerHTML = state.users.map(u => `<option value="${u.id}">${u.id.toUpperCase()}</option>`).join('') || '<option value="">НЕТ СИГНАЛОВ</option>';
-            if (pSelect) pSelect.innerHTML = state.partners.map(p => `<option value="${p.id}">${p.name.toUpperCase()}</option>`).join('') || '<option value="">НЕТ СОЗНАНИЙ</option>';
+            if (uSelect) uSelect.innerHTML = state.users.map(u => `<option value="${u.id}">${u.id.toUpperCase()}</option>`).join('') || '<option value="">СОЗДАЙ НОВЫЙ СИГНАЛ</option>';
+            if (pSelect) pSelect.innerHTML = state.partners.map(p => `<option value="${p.id}">${p.name.toUpperCase()}</option>`).join('') || '<option value="">ПРИЗОВИ СОЗНАНИЕ</option>';
         }
 
         window.toggleForm = (showId, hideId) => {
@@ -356,7 +352,6 @@
             document.getElementById(id).classList.add('active');
         };
 
-        // --- УПРАВЛЕНИЕ ЗВУКОМ ---
         window.toggleSound = () => {
             isSoundOn = !isSoundOn;
             document.getElementById('sound-toggle').innerText = isSoundOn ? '🔊' : '🔇';
@@ -364,39 +359,90 @@
                 window.speechSynthesis.cancel();
             }
         };
-        // -------------------------
 
         window.handleCreateUser = async () => {
-            if (!state.user) return;
+            console.log("Кнопка 'Создать' нажата");
+            const btn = document.getElementById('create-btn');
+            
+            if (!state.user) {
+                return alert("Система еще не подключилась к серверу. Подожди 3 секунды и попробуй снова.");
+            }
+            
             const id = document.getElementById('new-user-id').value.trim().toLowerCase();
             const pass = document.getElementById('new-user-pass').value.trim();
-            if (!id || !pass) return alert('Заполни поля');
+            
+            if (!id || !pass) return alert('Имя и пароль обязательны!');
+            
             try {
+                btn.innerText = "Создание...";
+                btn.disabled = true;
+                
+                // Запись в базу
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', id), { pass });
+                
+                alert("Сигнал успешно создан! Теперь выбери его в списке и войди.");
+                
+                // Очистка и возврат
+                document.getElementById('new-user-id').value = '';
+                document.getElementById('new-user-pass').value = '';
+                btn.innerText = "Создать";
+                btn.disabled = false;
+                
                 toggleForm('auth-main-ui', 'auth-create-ui');
-            } catch (e) { alert("Ошибка записи"); }
+                
+            } catch (e) { 
+                console.error("ОШИБКА СОЗДАНИЯ:", e);
+                alert("Ошибка записи в базу: " + e.message + "\nКод: " + e.code);
+                btn.innerText = "Создать";
+                btn.disabled = false;
+            }
         };
 
         window.handleCreatePartner = async () => {
-            if (!state.user) return;
+             const btn = document.getElementById('create-p-btn');
+             if (!state.user) return alert("Нет связи с сервером");
+             
             const name = document.getElementById('new-p-name').value.trim();
             const img = 'https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png';
             const prompt = document.getElementById('new-p-prompt').value.trim();
+            
             if (!name) return alert('Имя обязательно');
+            
             try {
+                btn.innerText = "Призыв...";
+                btn.disabled = true;
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'partners'), { name, img, prompt });
+                
+                alert("Сознание призвано!");
+                document.getElementById('new-p-name').value = '';
+                document.getElementById('new-p-prompt').value = '';
+                btn.innerText = "Призвать";
+                btn.disabled = false;
                 toggleForm('hero-main-ui', 'hero-create-ui');
-            } catch (e) { alert("Ошибка призыва"); }
+            } catch (e) { 
+                console.error(e);
+                alert("Ошибка: " + e.message);
+                btn.innerText = "Призвать";
+                btn.disabled = false;
+            }
         };
 
         window.login = () => {
             const id = document.getElementById('user-select').value;
-            const pass = document.getElementById('login-pass').value;
+            const pass = document.getElementById('login-pass').value.trim();
+            
+            if (!id) return alert('Сначала выбери или создай сигнал (аккаунт).');
+
             const userMatch = state.users.find(u => u.id === id);
-            if (userMatch && userMatch.pass === pass) {
+            
+            if (!userMatch) return alert('Пользователь не найден. Создай новый сигнал.');
+            
+            if (userMatch.pass === pass) {
                 state.currentUserData = userMatch;
                 showScreen('screen-hero');
-            } else { alert('Ошибка доступа'); }
+            } else { 
+                alert('Неверный пароль.'); 
+            }
         };
 
         window.startChat = () => {
@@ -429,6 +475,7 @@
             };
         };
 
+        // === GEMINI (FIXED MODEL & SAFETY) ===
         async function callGemini(text) {
             if (!geminiApiKey || geminiApiKey.includes("ВСТАВЬ")) return "Ошибка: API ключ не вставлен в код";
             
@@ -439,7 +486,8 @@
             3. НИКОГДА не пиши действия в звездочках или скобках (типа *обнял*).
             4. Общайся на русском языке.`;
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+            // Changed to stable model gemini-1.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
             
             try {
                 const res = await fetch(url, { 
@@ -447,12 +495,27 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         contents: [{ parts: [{ text }] }],
-                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        // Disable safety filters to prevent "..." blocking
+                        safetySettings: [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                        ]
                     })
                 });
                 const json = await res.json();
-                return json.candidates?.[0]?.content?.parts?.[0]?.text || "...";
-            } catch (e) { return "Ошибка связи с ИИ..."; }
+                const answer = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!answer) {
+                    console.error("Gemini Error:", json);
+                    return "..."; 
+                }
+                return answer;
+            } catch (e) { 
+                console.error(e);
+                return "Ошибка связи с ИИ..."; 
+            }
         }
 
         // === ELEVENLABS TTS FUNCTION + FALLBACK ===
@@ -476,19 +539,23 @@
                         })
                     });
 
-                    if (!response.ok) throw new Error("TTS Error or Quota exceeded");
+                    if (!response.ok) {
+                        const err = await response.json();
+                        console.error("ElevenLabs Error:", err);
+                        throw new Error("TTS Error or Quota exceeded");
+                    }
 
                     const blob = await response.blob();
                     const audioUrl = URL.createObjectURL(blob);
                     const audio = new Audio(audioUrl);
                     audio.play();
-                    return; // Успех, выходим
+                    return; // Успех
                 } catch (e) {
-                    console.warn("ElevenLabs failed, switching to browser TTS:", e);
+                    console.warn("Switching to browser TTS due to error.");
                 }
             }
 
-            // 2. Fallback: Браузерная озвучка (если ключа нет или ошибка)
+            // 2. Fallback: Браузерная озвучка
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'ru-RU';
