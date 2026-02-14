@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>JUAN AI - Deep Ocean</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Raleway:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent-cyan: #00f2ff;
+            --deep-indigo: #010a16;
+            --text-main: #e0f7fa;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --input-bg: #0a192f;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; padding: 0; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        html, body {
+            height: 100%; width: 100%;
+            overflow: hidden; 
+            background: var(--deep-indigo);
+            color: var(--text-main);
+            font-family: 'Raleway', sans-serif;
+        }
+
+        /* Animated Ocean Background */
+        .ocean-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: linear-gradient(180deg, #010a16 0%, #001c3a 35%, #003855 50%, #001c3a 65%, #010a16 100%);
+            background-size: 100% 400%;
+            animation: oceanFlow 30s ease-in-out infinite;
+        }
+
+        @keyframes oceanFlow {
+            0% { background-position: 50% 0%; }
+            50% { background-position: 50% 100%; }
+            100% { background-position: 50% 0%; }
+        }
+
+        #screen-intro {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2000; background: var(--deep-indigo);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+
+        .intro-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.4); }
+        .intro-btn-wrapper { position: absolute; bottom: 15%; z-index: 2001; }
+
+        .container {
+            width: 100%; max-width: 500px; height: 100dvh;
+            margin: 0 auto; display: flex; flex-direction: column;
+            position: relative; overflow: hidden;
+        }
+
+        .screen { display: none; flex: 1; flex-direction: column; overflow-y: auto; padding: 20px; animation: fadeIn 0.4s ease; }
+        .active { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .flow-content { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; gap: 20px; text-align: center; }
+
+        .avatar-main {
+            width: 120px; height: 120px; border-radius: 50%; padding: 2px;
+            background: linear-gradient(135deg, var(--accent-cyan), transparent);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+            overflow: hidden; margin-bottom: 10px;
+        }
+        .avatar-main img { width: 100%; height: 100%; object-fit: cover; }
+
+        input, select, textarea {
+            width: 100%; background: var(--input-bg); border: 1px solid rgba(255,255,255,0.2);
+            padding: 14px; color: #fff; font-family: inherit; font-size: 16px; border-radius: 15px; outline: none; text-align: center;
+        }
+        select option { background-color: var(--input-bg); color: #fff; }
+
+        button.minimal-btn {
+            background: var(--glass-bg); border: 1px solid var(--accent-cyan);
+            color: #fff; padding: 16px 30px; border-radius: 50px;
+            font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: 0.3s;
+            text-transform: uppercase; width: 100%; font-weight: 600;
+        }
+        button.minimal-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .form-toggle-link { font-size: 11px; opacity: 0.5; text-decoration: underline; cursor: pointer; margin-top: 10px; letter-spacing: 1px; }
+
+        .create-container { display: none; width: 100%; flex-direction: column; gap: 12px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
+
+        .chat-stage { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; overflow: hidden; }
+        .model-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        .model-img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+        .chat-stage::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: linear-gradient(to top, var(--deep-indigo) 10%, transparent 100%); z-index: 2; }
+
+        .ai-bubble-container { z-index: 10; width: 85%; margin-bottom: 110px; transform-origin: bottom center; display: none; }
+        .ai-bubble { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #fff; padding: 12px 18px; border-radius: 20px; font-size: 14px; line-height: 1.5; position: relative; border: 1px solid rgba(255,255,255,0.1); text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+
+        .user-temp-msg { position: absolute; bottom: 100px; z-index: 15; background: var(--accent-cyan); color: #010a16; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 5px 15px rgba(0, 242, 255, 0.3); transition: 0.6s ease; }
+        .fade-out { opacity: 0; transform: translateY(-20px); }
+
+        .chat-controls { z-index: 20; padding: 15px 20px 30px; background: var(--deep-indigo); width: 100%; }
+        .input-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.08); padding: 8px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); }
+        #chat-input { text-align: left; border: none; padding: 8px; flex: 1; background: transparent; color: #fff; }
+        .send-btn { width: 40px; height: 40px; background: var(--accent-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #010a16; cursor: pointer; border: none; font-size: 20px; }
+        #typing-indicator { position: absolute; top: -20px; width: 100%; text-align: center; font-size: 10px; color: var(--accent-cyan); letter-spacing: 2px; opacity: 0; transition: 0.3s; }
+        .header-chat { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 30; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(1, 10, 22, 0.9); }
+    </style>
+</head>
+<body>
+
+    <div id="screen-intro">
+        <video class="intro-video" id="main-intro-video" autoplay loop muted playsinline>
+            <source src="https://image2url.com/r2/default/videos/1770938085939-0f030fec-f973-4b6b-892b-f63f6330c702.mp4" type="video/mp4">
+        </video>
+        <div class="intro-btn-wrapper">
+            <button class="minimal-btn" onclick="exitIntro()">В поток</button>
+        </div>
+    </div>
+
+    <div class="ocean-bg"></div>
+
+    <div class="container">
+        <!-- AUTH -->
+        <div id="screen-auth" class="screen active">
+            <div class="flow-content">
+                <div class="avatar-main">
+                    <img src="https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png">
+                </div>
+                
+                <div id="auth-main-ui" style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Твой сигнал</div>
+                    <select id="user-select"><option value="">Загрузка...</option></select>
+                    <input type="password" id="login-pass" placeholder="Пароль">
+                    <button class="minimal-btn" id="login-btn" onclick="login()">Синхронизироваться</button>
+                    <span class="form-toggle-link" onclick="toggleForm('auth-create-ui', 'auth-main-ui')">Создать новый сигнал</span>
+                </div>
+
+                <div id="auth-create-ui" class="create-container">
+                    <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Новый сигнал</div>
+                    <input type="text" id="new-user-id" placeholder="Имя">
+                    <input type="password" id="new-user-pass" placeholder="Пароль">
+                    <button class="minimal-btn" onclick="handleCreateUser()">Создать</button>
+                    <span class="form-toggle-link" onclick="toggleForm('auth-main-ui', 'auth-create-ui')">Назад</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- HERO -->
+        <div id="screen-hero" class="screen">
+            <div class="flow-content">
+                <div id="hero-main-ui" style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Выбери сознание</div>
+                    <select id="partner-select"></select>
+                    <button class="minimal-btn" onclick="startChat()">Войти в резонанс</button>
+                    <span class="form-toggle-link" onclick="toggleForm('hero-create-ui', 'hero-main-ui')">Призвать новое сознание</span>
+                    <p onclick="showScreen('screen-auth')" style="cursor:pointer; opacity: 0.5; margin-top: 20px; font-size: 10px; letter-spacing: 2px;">ВЫЙТИ</p>
+                </div>
+
+                <div id="hero-create-ui" class="create-container">
+                    <div style="font-size: 10px; letter-spacing: 3px; opacity: 0.6; text-transform: uppercase;">Новое сознание</div>
+                    <input type="text" id="new-p-name" placeholder="Имя">
+                    <input type="text" id="new-p-img" placeholder="URL изображения">
+                    <textarea id="new-p-prompt" placeholder="Настрой/Характер..." style="height: 80px;"></textarea>
+                    <button class="minimal-btn" onclick="handleCreatePartner()">Призвать</button>
+                    <span class="form-toggle-link" onclick="toggleForm('hero-main-ui', 'hero-create-ui')">Назад</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT -->
+        <div id="screen-chat" class="screen" style="padding: 0;">
+            <div class="header-chat">
+                <div style="font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;" id="partner-name-display">JUAN</div>
+                <div onclick="showScreen('screen-hero')" style="font-size: 10px; opacity: 0.6; cursor: pointer; letter-spacing: 1px;">НАЗАД</div>
+            </div>
+
+            <div class="chat-stage">
+                <div class="model-container">
+                    <img id="partner-model-img" class="model-img" src="">
+                </div>
+                <div id="ai-bubble-container" class="ai-bubble-container">
+                    <div id="ai-text" class="ai-bubble">Я слушаю...</div>
+                </div>
+                <div id="user-temp-container"></div>
+            </div>
+
+            <div class="chat-controls">
+                <div id="typing-indicator">ПРИЕМ СИГНАЛА...</div>
+                <div class="input-row">
+                    <input type="text" id="chat-input" placeholder="Шепни..." autocomplete="off">
+                    <button class="send-btn" onclick="send()">✦</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        //  НАСТРОЙКИ (ЗАПОЛНЕНО)
+        // ==========================================
+        
+        const manualConfig = {
+            apiKey: "AIzaSyABu6X791u9Ph7R5-UYgiZ-3a_5XNidycw",
+            authDomain: "juan-ai-app.firebaseapp.com",
+            projectId: "juan-ai-app",
+            storageBucket: "juan-ai-app.firebasestorage.app",
+            messagingSenderId: "70161662358",
+            appId: "1:70161662358:web:8b8da057e22189ff065db7"
+        };
+
+        const geminiApiKey = "AIzaSyDNCX-WFxbCS41EakUliMQ4qb-jS584b1A"; 
+
+        // ==========================================
+        
+        let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : manualConfig;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Используем projectId из конфига для пути к данным
+        const appId = firebaseConfig.projectId;
+
+        let state = { user: null, currentUserData: null, currentPartner: null, partners: [], users: [] };
+
+        // AUTH INIT
+        const init = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.warn("Auth check:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, (fbUser) => {
+            state.user = fbUser;
+            if (fbUser) setupDataListeners();
+        });
+
+        init();
+
+        function setupDataListeners() {
+            if (!state.user) return;
+            const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
+            const partnersRef = collection(db, 'artifacts', appId, 'public', 'data', 'partners');
+
+            onSnapshot(usersRef, (snap) => {
+                state.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateLists();
+            });
+
+            onSnapshot(partnersRef, (snap) => {
+                state.partners = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateLists();
+            });
+        }
+
+        // UI
+        function updateLists() {
+            const uSelect = document.getElementById('user-select');
+            const pSelect = document.getElementById('partner-select');
+            if (uSelect) uSelect.innerHTML = state.users.map(u => `<option value="${u.id}">${u.id.toUpperCase()}</option>`).join('') || '<option value="">НЕТ СИГНАЛОВ</option>';
+            if (pSelect) pSelect.innerHTML = state.partners.map(p => `<option value="${p.id}">${p.name.toUpperCase()}</option>`).join('') || '<option value="">НЕТ СОЗНАНИЙ</option>';
+        }
+
+        window.exitIntro = () => {
+            document.getElementById('screen-intro').style.opacity = "0";
+            setTimeout(() => document.getElementById('screen-intro').style.display = "none", 800);
+        };
+
+        window.toggleForm = (showId, hideId) => {
+            document.getElementById(showId).style.display = 'flex';
+            document.getElementById(hideId).style.display = 'none';
+        };
+
+        window.showScreen = (id) => {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        };
+
+        window.handleCreateUser = async () => {
+            if (!state.user) return;
+            const id = document.getElementById('new-user-id').value.trim().toLowerCase();
+            const pass = document.getElementById('new-user-pass').value.trim();
+            if (!id || !pass) return alert('Заполни поля');
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', id), { pass });
+                toggleForm('auth-main-ui', 'auth-create-ui');
+            } catch (e) { alert("Ошибка записи"); }
+        };
+
+        window.handleCreatePartner = async () => {
+            if (!state.user) return;
+            const name = document.getElementById('new-p-name').value.trim();
+            const img = document.getElementById('new-p-img').value.trim();
+            const prompt = document.getElementById('new-p-prompt').value.trim();
+            if (!name) return alert('Имя обязательно');
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'partners'), { name, img, prompt });
+                toggleForm('hero-main-ui', 'hero-create-ui');
+            } catch (e) { alert("Ошибка призыва"); }
+        };
+
+        window.login = () => {
+            const id = document.getElementById('user-select').value;
+            const pass = document.getElementById('login-pass').value;
+            const userMatch = state.users.find(u => u.id === id);
+            if (userMatch && userMatch.pass === pass) {
+                state.currentUserData = userMatch;
+                showScreen('screen-hero');
+            } else { alert('Ошибка доступа'); }
+        };
+
+        window.startChat = () => {
+            const pId = document.getElementById('partner-select').value;
+            state.currentPartner = state.partners.find(p => p.id === pId);
+            if (!state.currentPartner) return;
+            document.getElementById('partner-name-display').innerText = state.currentPartner.name;
+            document.getElementById('partner-model-img').src = state.currentPartner.img || 'https://r2.syntx.ai/user_5069746049/generated/8fa9666f4e7dcac53988afe15aac6a1a_midjourney_image_2_1759615922.png';
+            showScreen('screen-chat');
+        };
+
+        // GEMINI
+        async function callGemini(text) {
+            if (!geminiApiKey || geminiApiKey.includes("ВСТАВЬ")) return "Ошибка: API ключ не вставлен в код (строка 276)";
+            
+            const systemPrompt = `Ты - ${state.currentPartner.name}, чувственный парень, LGBT+ контекст. Партнер: ${state.currentUserData.id}. Настрой: ${state.currentPartner.prompt}. Не пиши действия в звездочках.`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+            
+            try {
+                const res = await fetch(url, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+                const json = await res.json();
+                return json.candidates?.[0]?.content?.parts?.[0]?.text || "...";
+            } catch (e) { return "Ошибка связи с ИИ..."; }
+        }
+
+        window.send = async () => {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            const tempContainer = document.getElementById('user-temp-container');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'user-temp-msg';
+            msgDiv.innerText = text;
+            tempContainer.innerHTML = '';
+            tempContainer.appendChild(msgDiv);
+            
+            input.value = '';
+            document.getElementById('typing-indicator').style.opacity = '1';
+            document.getElementById('ai-bubble-container').style.display = 'none';
+            
+            const ans = await callGemini(text);
+            
+            document.getElementById('typing-indicator').style.opacity = '0';
+            msgDiv.classList.add('fade-out');
+            setTimeout(() => {
+                msgDiv.remove();
+                document.getElementById('ai-text').innerText = ans;
+                document.getElementById('ai-bubble-container').style.display = 'block';
+            }, 600);
+        };
+
+        document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
+    </script>
+</body>
+</html>
